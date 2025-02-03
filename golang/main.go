@@ -16,7 +16,7 @@ type state struct {
 	getEmbeddingType func() string
 }
 
-func (s *state) __state() string {
+func (s state) __state() string {
 	// Use the embedded function to get the embedding struct's type
 	return s.getEmbeddingType()
 }
@@ -37,10 +37,16 @@ func (Initial) New() BookState {
 
 type Draft struct {
 	state
+
+	Genre    *string
+	Chapters []Chapter
 }
 
-func (Draft) New() BookState {
-	i := &Draft{}
+func (Draft) initialDraft() Draft {
+	i := Draft{
+		Genre:    nil,
+		Chapters: []Chapter{},
+	}
 	i.getEmbeddingType = richMetaType(i)
 	return i
 }
@@ -97,7 +103,7 @@ type event struct {
 	getEmbeddingType func() string
 }
 
-func (e *event) __event() string {
+func (e event) __event() string {
 	return e.getEmbeddingType()
 }
 
@@ -105,18 +111,91 @@ type BookEvent interface {
 	__event() string
 }
 
-type DraftEvent struct {
-	event
+type external_event struct {
 }
 
-func (DraftEvent) New() BookEvent {
-	i := &DraftEvent{}
+func (external_event) __external_event(e event) string {
+	return e.getEmbeddingType()
+}
+
+type DraftEvent interface {
+	__draft_event(e event) string
+}
+
+type draft_event struct {
+	external_event
+}
+
+func (draft_event) __draft_event(e event) string {
+	return e.getEmbeddingType()
+}
+
+type BookExternalEvent interface {
+	__external_event(e event) string
+}
+
+// export type BookExternalEvent =
+//   | DraftEvent
+//   | UnderEditingEvent
+//   | PublishedExternal
+//   | OutOfPrintEvent;
+
+// export type DraftEvent = DraftCreated | ChapterAdded;
+
+type DraftCreated struct {
+	event
+	draft_event
+
+	Genre string
+}
+
+func (DraftCreated) New() *DraftCreated {
+	i := &DraftCreated{}
 	i.getEmbeddingType = richMetaType(i)
 	return i
 }
 
+type Chapter struct {
+	Number  int64
+	Title   string
+	Content string
+}
+
+type ChapterAdded struct {
+	event
+	draft_event
+
+	Chapter Chapter
+}
+
+func (ChapterAdded) New() *ChapterAdded {
+	i := &ChapterAdded{}
+	i.getEmbeddingType = richMetaType(i)
+	return i
+}
+
+func evolveDraft(state Draft, event DraftEvent) Draft {
+	switch e := event.(type) {
+	default:
+		{
+			return state
+		}
+	case DraftCreated:
+		{
+			state.Genre = &e.Genre
+			return state
+		}
+	case ChapterAdded:
+		{
+			state.Chapters = append(state.Chapters, e.Chapter)
+			return state
+		}
+	}
+}
+
 type UnderEditingEvent struct {
 	event
+	external_event
 }
 
 func (UnderEditingEvent) New() BookEvent {
@@ -137,6 +216,7 @@ func (InPrintEvent) New() BookEvent {
 
 type PublishedEvent struct {
 	event
+	external_event
 }
 
 func (PublishedEvent) New() BookEvent {
@@ -147,6 +227,7 @@ func (PublishedEvent) New() BookEvent {
 
 type OutOfPrintEvent struct {
 	event
+	external_event
 }
 
 func (OutOfPrintEvent) New() BookEvent {
@@ -162,10 +243,60 @@ func (OutOfPrintEvent) New() BookEvent {
 //   | PublishedEvent
 //   | OutOfPrintEvent;
 
+func isInitial(state BookState) bool {
+	_, ok := state.(Initial)
+	return ok
+}
+
+func isDraft(state BookState) bool {
+	_, ok := state.(Draft)
+	return ok
+}
+
+func evolve(state BookState, event BookEvent) BookState {
+	switch e := event.(type) {
+	case DraftCreated:
+		{
+			if !isInitial(state) || !isDraft(state) {
+				return state
+			}
+			return evolveDraft(Draft{}.initialDraft(), e)
+		}
+	case ChapterAdded:
+		{
+			if !isDraft(state) {
+				return state
+			}
+			return evolveDraft(state.(Draft), e)
+		}
+	case UnderEditingEvent:
+		{
+			return state
+		}
+	case InPrintEvent:
+		{
+
+			return state
+		}
+	case PublishedEvent:
+		{
+			return state
+		}
+	case OutOfPrintEvent:
+		{
+			return state
+		}
+	default:
+		{
+			return state
+		}
+	}
+}
+
 func main() {
 	states := []BookState{
 		Initial{}.New(),
-		Draft{}.New(),
+		Draft{}.initialDraft(),
 		UnderEditing{}.New(),
 		PublishedBook{}.New(),
 		InPrint{}.New(),
@@ -176,7 +307,7 @@ func main() {
 		fmt.Printf("State Type: %s\n", state.__state())
 	}
 
-	events := []BookEvent{DraftEvent{}.New(), UnderEditingEvent{}.New(), InPrintEvent{}.New(), PublishedEvent{}.New(), OutOfPrintEvent{}.New()}
+	events := []BookEvent{DraftCreated{}.New(), ChapterAdded{}.New(), UnderEditingEvent{}.New(), InPrintEvent{}.New(), PublishedEvent{}.New(), OutOfPrintEvent{}.New()}
 
 	for _, event := range events {
 		fmt.Printf("Event Type %s\n", event.__event())

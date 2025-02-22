@@ -1,7 +1,7 @@
 import { IBooksRepository } from '../../persistence/books/repositories';
 import { AuthorIdOrData, IAuthorProvider } from '../../domain/books/authors';
 import { IPublisherProvider } from '../../domain/books/publishers/publisherProvider';
-import { Book } from '../../domain/books/book';
+import { Book, evolve as aggregateEvolve } from '../../domain/books/book';
 import { InvalidOperationError, InvalidStateError } from '#core/errors';
 import { PositiveNumber } from '#core/typing';
 import { Ratio } from '#core/typing/ratio';
@@ -53,6 +53,7 @@ import {
 } from 'src/slimmed/domain/books/draft';
 import { Command } from '../../infrastructure/commands';
 import { IPublishingHouse } from 'src/original/domain/books/services';
+import { evolve } from 'src/slimmed/domain/books/outOfPrint';
 
 export interface IBooksService {
   createDraft(command: CreateDraftAndSetupAuthorAndPublisher): Promise<void>;
@@ -263,6 +264,34 @@ export class BooksService implements IBooksService {
 
       const result = handle(aggregate);
       return Array.isArray(result) ? result : [result];
+    });
+  };
+
+  private handles = (
+    id: BookId,
+    handles: ((book: Book) => BookEvent[])[],
+  ): Promise<void> => {
+    return this.repository.getAndUpdate(id, (entity) => {
+      let aggregate =
+        entity !== null
+          ? bookMapper.mapFromEntity(entity, this.bookFactory)
+          : this.getDefault();
+
+      const { events } = handles.reduce(
+        (acc, handle) => {
+          const events = handle(acc.aggregate);
+
+          aggregate = events.reduce((state, event) => {
+            aggregate = aggregateEvolve(state, event);
+            return aggregate;
+          }, acc.aggregate);
+
+          return { aggregate, events };
+        },
+        { aggregate, events: new Array<BookEvent>() },
+      );
+
+      return events;
     });
   };
 

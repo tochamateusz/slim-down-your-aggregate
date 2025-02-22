@@ -1,0 +1,7 @@
+POST http://localhost:8080/api/books
+Content-Type: application/json
+
+{
+  "book_id": "73d3bfd4-0161-4f07-bbe7-34f1cdacc1ea",
+  "title": "Test"
+}

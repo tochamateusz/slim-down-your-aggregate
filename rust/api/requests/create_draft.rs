@@ -1,5 +1,5 @@
-use crate::applications::book::book_services::CreateDraftAndSetupAuthorAndPublisher;
-use crate::domain::entities::{book_id::BookId, title::Title};
+use applications::book_services::CreateDraftAndSetupAuthorAndPublisher;
+use domain::entities::{book_id::BookId, title::Title};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

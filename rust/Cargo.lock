@@ -238,6 +238,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "api"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "applications",
+ "domain",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "applications"
+version = "0.1.0"
+dependencies = [
+ "domain",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -424,6 +442,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -1054,6 +1081,7 @@ name = "rust"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "api",
  "serde",
  "serde_json",
  "uuid",

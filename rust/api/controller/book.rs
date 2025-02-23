@@ -1,10 +1,11 @@
 use actix_web::{post, HttpResponse, Responder};
 
-use crate::api::requests;
+use crate::requests::create_draft::to_create_draft_cmd;
+
 
 #[post("/api/books")]
 pub async fn books(req_body: String) -> impl Responder {
-    let cmd=requests::create_draft::to_create_draft_cmd(req_body.to_string());
+    let cmd=to_create_draft_cmd(req_body.to_string());
 
     match cmd {
         Ok(cmd)=>{

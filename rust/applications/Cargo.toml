@@ -1,0 +1,15 @@
+[package]
+name = "applications"
+version = "0.1.0"
+edition = "2021"
+autolib = false
+
+[dependencies]
+domain = { path = "../domain" }
+
+[lib]
+path = "./book/mod.rs" 
+
+[patch.crates-io]
+# Same as the root workspace
+domain = { path = "../domain" }
